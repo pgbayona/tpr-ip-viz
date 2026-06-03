@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 
 import pandas as pd
+import pycountry
 import requests
 from loguru import logger
 
@@ -18,6 +19,14 @@ IP_INDICATORS = {
     "ITS_CS_AX6": "IP Service Exports (Charges for use of IP, credits)",
     "ITS_CS_AM6": "IP Service Imports (Charges for use of IP, debits)",
 }
+
+
+def _alpha3_to_numeric(alpha3: str) -> str:
+    """Convert ISO 3166-1 alpha-3 to numeric string (WTO reporter code format)."""
+    try:
+        return pycountry.countries.get(alpha_3=alpha3).numeric
+    except AttributeError:
+        return ""
 
 
 def _api_key() -> str:
@@ -80,12 +89,19 @@ class WTOExtractor:
         if not self._key:
             return pd.DataFrame()
 
+        # WTO API requires ISO 3166-1 numeric reporter codes, not alpha-3.
+        numeric = _alpha3_to_numeric(country_alpha3)
+        if not numeric:
+            logger.warning(f"WTO: could not resolve numeric code for {country_alpha3}")
+            return pd.DataFrame()
+
         years = ",".join(str(y) for y in range(start, end + 1))
         params = {
             "i": indicator,
-            "r": country_alpha3,
+            "r": numeric,
             "p": "000",
             "ps": years,
+            "pc": "SH",  # "Charges for the use of intellectual property n.i.e."
             "fmt": "json",
             "mode": "full",
             "lang": 1,
