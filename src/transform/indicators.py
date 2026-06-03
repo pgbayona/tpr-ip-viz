@@ -150,6 +150,45 @@ def narrative_snippet(
     return sentence + "."
 
 
+def ip_services_narrative(country_name: str, ip: pd.DataFrame) -> str:
+    """Generate a TPR sentence about IP services trade balance."""
+    if ip.empty or "balance_usd" not in ip.columns:
+        return f"Data on charges for the use of intellectual property is not available for {country_name}."
+
+    valid = ip[ip["balance_usd"].notna()].sort_values("year")
+    if valid.empty:
+        return f"Data on charges for the use of intellectual property is not available for {country_name}."
+
+    latest  = valid.iloc[-1]
+    earliest = valid.iloc[0]
+    end_yr   = int(latest["year"])
+    start_yr = int(earliest["year"])
+    bal_end  = float(latest["balance_usd"])
+    bal_start = float(earliest["balance_usd"])
+
+    sd_end   = "surplus" if bal_end   >= 0 else "deficit"
+    sd_start = "surplus" if bal_start >= 0 else "deficit"
+
+    credits = latest.get("exports_usd")
+    debits  = latest.get("imports_usd")
+    credits = float(credits) if credits is not None and not pd.isna(credits) else None
+    debits  = float(debits)  if debits  is not None and not pd.isna(debits)  else None
+
+    sentence = (
+        f"In {end_yr}, {country_name} recorded a trade {sd_end} of "
+        f"USD {abs(bal_end):,.0f} million in charges for the use of intellectual property"
+    )
+    if credits is not None and debits is not None:
+        sentence += (
+            f" (credits: USD {credits:,.0f} million; debits: USD {debits:,.0f} million)"
+        )
+    if start_yr != end_yr:
+        sentence += (
+            f", compared to a {sd_start} of USD {abs(bal_start):,.0f} million in {start_yr}"
+        )
+    return sentence + "."
+
+
 def generate_resident_narrative(
     country_name: str,
     indicator_name: str,

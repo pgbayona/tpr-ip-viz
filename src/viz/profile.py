@@ -26,6 +26,7 @@ from src.transform.indicators import (
     resident_share,
     narrative_snippet,
     generate_resident_narrative,
+    ip_services_narrative,
     latest_value,
     yoy_delta,
 )
@@ -167,12 +168,7 @@ def _compute_derived(country_name: str, profile: CountryProfile) -> dict:
             delta = yoy_delta(ip, col)
             overview[label] = {"latest_value": val, "latest_year": yr, "yoy_delta_pct": delta}
 
-            ind_display = (
-                "Charges for use of IP, n.i.e. (exports)"
-                if col == "exports_usd"
-                else "Charges for use of IP, n.i.e. (imports)"
-            )
-            text = narrative_snippet(country_name, ind_display, ip, col)
-            narratives.append({"indicator": label, "text": text})
+        text = ip_services_narrative(country_name, ip)
+        narratives.append({"indicator": "Charges for the Use of Intellectual Property", "text": text})
 
     return {"overview": overview, "narratives": narratives}

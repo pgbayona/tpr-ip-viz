@@ -318,29 +318,18 @@ with tab5:
     if not valid_narratives:
         st.info("No narrative data available. Check that the country data loaded successfully.")
     else:
-        for item in valid_narratives:
-            ind  = item.get("indicator", "")
-            text = item.get("text", "")
-            with st.expander(f"**{ind}**", expanded=False):
-                st.markdown(f'<div class="narrative-box">{text}</div>', unsafe_allow_html=True)
-                st.code(text, language=None)
-
-    st.divider()
-    if valid_narratives:
-        combined = "\n\n".join(
-            f"{n['indicator']}:\n{n['text']}" for n in valid_narratives
-        )
+        combined = "\n\n".join(n["text"] for n in valid_narratives)
         c1, _ = st.columns([1, 3])
         with c1:
             st.download_button(
-                label="⬇️ Download all as .txt",
+                label="⬇️ Download as .txt",
                 data=combined,
                 file_name=f"TPR_IP_Narrative_{country_code}.txt",
                 mime="text/plain",
             )
         st.text_area(
-            "All narrative snippets",
+            "narrative",
             value=combined,
-            height=320,
+            height=480,
             label_visibility="collapsed",
         )
