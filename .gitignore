@@ -34,3 +34,6 @@ templates/TPR_IP_Template.xlsx
 # OS
 .DS_Store
 Thumbs.db
+
+# Office temp/lock files
+~$*
