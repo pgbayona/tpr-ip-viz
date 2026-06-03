@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.mypy_cache/
+
+# Secrets
+.env
+.streamlit/secrets.toml
+
+# Data cache (can be large; regenerated on demand)
+data/raw/
+data/processed/
+
+# Excel template (user-provided; not committed)
+templates/TPR_IP_Template.xlsx
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*.bak
+
+# OS
+.DS_Store
+Thumbs.db
