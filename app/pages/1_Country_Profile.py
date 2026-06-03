@@ -318,7 +318,14 @@ with tab5:
     if not valid_narratives:
         st.info("No narrative data available. Check that the country data loaded successfully.")
     else:
-        combined = "\n\n".join(n["text"] for n in valid_narratives)
+        for item in valid_narratives:
+            st.markdown(f"**{item['indicator']}**")
+            st.markdown(item["text"])
+
+        st.divider()
+        combined = "\n\n".join(
+            f"{n['indicator']}:\n{n['text']}" for n in valid_narratives
+        )
         c1, _ = st.columns([1, 3])
         with c1:
             st.download_button(
@@ -330,6 +337,6 @@ with tab5:
         st.text_area(
             "narrative",
             value=combined,
-            height=480,
+            height=400,
             label_visibility="collapsed",
         )

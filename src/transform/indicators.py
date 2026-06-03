@@ -144,8 +144,6 @@ def narrative_snippet(
     if pct is not None and direction != "remained stable":
         change_word = "growth" if direction == "increased" else "a decline"
         sentence += f", representing {change_word} of {abs(pct):.1f}%"
-        if rate is not None:
-            sentence += f" (CAGR: {abs(rate) * 100:.1f}%)"
 
     return sentence + "."
 
