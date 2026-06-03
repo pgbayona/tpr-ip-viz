@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import sys
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -91,29 +92,34 @@ def assemble_country_profile(
         end_year=end_year,
     )
 
-    # ── WIPO ─────────────────────────────────────────────────────────────────
-    if alpha2:
-        wipo = WIPOExtractor()
-        raw = wipo.get_all_ip_data(alpha2, start_year, end_year)
+    # ── WIPO + WTO in parallel ────────────────────────────────────────────────
+    def _fetch_wipo():
+        if not alpha2:
+            logger.warning(f"Could not resolve alpha-2 for {country_input!r} — WIPO data skipped")
+            return {}
+        return WIPOExtractor().get_all_ip_data(alpha2, start_year, end_year)
 
-        profile.patent_applications        = _prep(raw.get("patent_applications"),        start_year, end_year)
-        profile.patent_grants              = _prep(raw.get("patent_grants"),              start_year, end_year)
-        profile.trademark_applications     = _prep(raw.get("trademark_applications"),     start_year, end_year)
-        profile.trademark_registrations    = _prep(raw.get("trademark_registrations"),    start_year, end_year)
-        profile.design_applications        = _prep(raw.get("design_applications"),        start_year, end_year)
-        profile.design_registrations       = _prep(raw.get("design_registrations"),       start_year, end_year)
-        profile.utility_model_applications = _prep(raw.get("utility_model_applications"), start_year, end_year)
-        profile.utility_model_grants       = _prep(raw.get("utility_model_grants"),       start_year, end_year)
-        profile.geographical_indications   = _prep(raw.get("geographical_indications"),   start_year, end_year)
-    else:
-        logger.warning(f"Could not resolve alpha-2 for {country_input!r} — WIPO data skipped")
+    def _fetch_wto():
+        if not alpha3:
+            logger.warning(f"Could not resolve alpha-3 for {country_input!r} — WTO data skipped")
+            return pd.DataFrame()
+        return WTOExtractor().get_ip_services(alpha3, start_year, end_year)
 
-    # ── WTO ──────────────────────────────────────────────────────────────────
-    if alpha3:
-        wto = WTOExtractor()
-        profile.ip_services = wto.get_ip_services(alpha3, start_year, end_year)
-    else:
-        logger.warning(f"Could not resolve alpha-3 for {country_input!r} — WTO data skipped")
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        f_wipo = pool.submit(_fetch_wipo)
+        f_wto = pool.submit(_fetch_wto)
+        raw = f_wipo.result()
+        profile.ip_services = f_wto.result()
+
+    profile.patent_applications        = _prep(raw.get("patent_applications"),        start_year, end_year)
+    profile.patent_grants              = _prep(raw.get("patent_grants"),              start_year, end_year)
+    profile.trademark_applications     = _prep(raw.get("trademark_applications"),     start_year, end_year)
+    profile.trademark_registrations    = _prep(raw.get("trademark_registrations"),    start_year, end_year)
+    profile.design_applications        = _prep(raw.get("design_applications"),        start_year, end_year)
+    profile.design_registrations       = _prep(raw.get("design_registrations"),       start_year, end_year)
+    profile.utility_model_applications = _prep(raw.get("utility_model_applications"), start_year, end_year)
+    profile.utility_model_grants       = _prep(raw.get("utility_model_grants"),       start_year, end_year)
+    profile.geographical_indications   = _prep(raw.get("geographical_indications"),   start_year, end_year)
 
     # ── Derived metrics ───────────────────────────────────────────────────────
     profile.derived = _compute_derived(name, profile)

@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import json
 import os
-import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 import pandas as pd
@@ -238,17 +238,19 @@ class WIPOExtractor:
     def get_all_ip_data(
         self, country: str, start: int = 2010, end: int = 2024
     ) -> dict[str, pd.DataFrame]:
-        """Fetch all 9 WIPO indicators for *country* (ISO alpha-2)."""
+        """Fetch all 9 WIPO indicators for *country* (ISO alpha-2) in parallel."""
         result: dict[str, pd.DataFrame] = {}
-        for key, meta in INDICATORS.items():
+
+        def _fetch(key: str, meta: dict) -> tuple[str, pd.DataFrame]:
             logger.info(f"Fetching {meta['name']} for {country}…")
-            result[key] = self.fetch_indicator(
-                country,
-                meta["tab"],
-                meta["id"],
-                meta["has_origin"],
-                start,
-                end,
+            return key, self.fetch_indicator(
+                country, meta["tab"], meta["id"], meta["has_origin"], start, end
             )
-            time.sleep(0.4)
+
+        with ThreadPoolExecutor(max_workers=len(INDICATORS)) as pool:
+            futures = {pool.submit(_fetch, k, m): k for k, m in INDICATORS.items()}
+            for future in as_completed(futures):
+                key, df = future.result()
+                result[key] = df
+
         return result
