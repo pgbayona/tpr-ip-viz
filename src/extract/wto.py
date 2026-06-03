@@ -21,8 +21,15 @@ IP_INDICATORS = {
 }
 
 
+_EXTRA_NUMERIC: dict[str, str] = {
+    "EP": "918",  # European Union (EPO filings → EU trade reporter)
+}
+
+
 def _alpha3_to_numeric(alpha3: str) -> str:
-    """Convert ISO 3166-1 alpha-3 to numeric string (WTO reporter code format)."""
+    """Convert ISO 3166-1 alpha-3 (or sentinel) to WTO numeric reporter code."""
+    if alpha3 in _EXTRA_NUMERIC:
+        return _EXTRA_NUMERIC[alpha3]
     try:
         return pycountry.countries.get(alpha_3=alpha3).numeric
     except AttributeError:
