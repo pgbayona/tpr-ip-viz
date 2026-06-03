@@ -12,7 +12,8 @@ if str(_ROOT) not in sys.path:
 
 try:
     from dotenv import load_dotenv
-    load_dotenv(_ROOT / ".env")
+    _env = _ROOT / ".env"
+    load_dotenv(_env if _env.exists() else _ROOT / ".env.txt")
 except ImportError:
     pass
 

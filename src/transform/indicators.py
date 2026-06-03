@@ -58,10 +58,8 @@ def resident_share(df: pd.DataFrame) -> pd.DataFrame:
     if df.empty or "resident" not in df.columns or "total" not in df.columns:
         return df
     out = df.copy()
-    with pd.option_context("mode.use_inf_as_na", True):
-        out["resident_share_pct"] = (
-            out["resident"] / out["total"] * 100.0
-        ).where(out["total"] > 0).round(1)
+    raw = (out["resident"] / out["total"] * 100.0).where(out["total"] > 0)
+    out["resident_share_pct"] = raw.replace([float("inf"), float("-inf")], float("nan")).round(1)
     return out
 
 
