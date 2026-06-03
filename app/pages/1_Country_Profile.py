@@ -145,7 +145,7 @@ with tab1:
     st.divider()
 
     # IP Services
-    st.markdown("##### Trade in IP Services (USD million)")
+    st.markdown("##### Charges for the Use of Intellectual Property (USD million)")
     c1, c2, _ = st.columns(3)
     with c1:
         d = ov.get("IP Service Exports", {})
