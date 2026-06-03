@@ -13,59 +13,71 @@ from loguru import logger
 _ROOT = Path(__file__).resolve().parents[2]
 _DEFAULT_RAW = _ROOT / "data" / "raw"
 
-WIPO_API_BASE = os.getenv("WIPO_API_BASE", "https://www.wipo.int/ipstats/api/data")
+_WIPO_BASE = "https://api.ipstatsdc.deda.prd.web1.wipo.int/api/v1/public/ips-search"
+_TABLE_RESULT = f"{_WIPO_BASE}/table-result"
+
+# Both headers are required by the server.
+_HEADERS = {
+    "Accept": "application/json",
+    "Accept-Language": "en",
+    "User-Agent": "TPR-IP-Viz/1.0 (WTO Intellectual Property Division)",
+}
 
 INDICATORS: dict[str, dict] = {
     "patent_applications": {
-        "code": 10,
+        "tab": "patent",
+        "id": 10,
         "name": "Patent Applications",
         "has_origin": True,
     },
     "patent_grants": {
-        "code": 23,
+        "tab": "patent",
+        "id": 23,
         "name": "Patent Grants",
         "has_origin": True,
     },
     "trademark_applications": {
-        "code": 30,
+        "tab": "trademark",
+        "id": 30,
         "name": "Trademark Applications",
         "has_origin": True,
     },
     "trademark_registrations": {
-        "code": 47,
+        "tab": "trademark",
+        "id": 47,
         "name": "Trademark Registrations",
         "has_origin": True,
     },
     "design_applications": {
-        "code": 50,
+        "tab": "industrial",
+        "id": 50,
         "name": "Industrial Design Applications",
         "has_origin": True,
     },
     "design_registrations": {
-        "code": 66,
+        "tab": "industrial",
+        "id": 66,
         "name": "Industrial Design Registrations",
         "has_origin": True,
     },
     "utility_model_applications": {
-        "code": 70,
+        "tab": "utility",
+        "id": 70,
         "name": "Utility Model Applications",
         "has_origin": True,
     },
     "utility_model_grants": {
-        "code": 75,
+        "tab": "utility",
+        "id": 75,
         "name": "Utility Model Grants",
         "has_origin": True,
     },
     "geographical_indications": {
-        "code": 503,
+        "tab": "geographical",
+        "id": 503,
         "name": "Geographical Indications",
         "has_origin": False,
     },
-}
-
-_HEADERS = {
-    "Accept": "application/json",
-    "User-Agent": "TPR-IP-Viz/1.0 (WTO Intellectual Property Division)",
 }
 
 
@@ -79,10 +91,10 @@ class WIPOExtractor:
 
     # ── Disk cache helpers ────────────────────────────────────────────────────
 
-    def _cache_path(self, country: str, code: int, start: int, end: int) -> Path:
-        return self.cache_dir / f"{country}_{code}_{start}_{end}.json"
+    def _cache_path(self, country: str, indicator_id: int, start: int, end: int) -> Path:
+        return self.cache_dir / f"{country}_{indicator_id}_{start}_{end}.json"
 
-    def _load(self, path: Path) -> dict | list | None:
+    def _load(self, path: Path) -> dict | None:
         if path.exists():
             try:
                 with open(path, encoding="utf-8") as fh:
@@ -91,7 +103,7 @@ class WIPOExtractor:
                 return None
         return None
 
-    def _save(self, path: Path, data: dict | list) -> None:
+    def _save(self, path: Path, data: dict) -> None:
         try:
             with open(path, "w", encoding="utf-8") as fh:
                 json.dump(data, fh)
@@ -103,157 +115,123 @@ class WIPOExtractor:
     def fetch_indicator(
         self,
         country: str,
-        indicator_code: int,
+        tab: str,
+        indicator_id: int,
+        has_origin: bool,
         start: int = 2010,
         end: int = 2024,
-        breakdown: bool = True,
     ) -> pd.DataFrame:
-        """Return a DataFrame for one WIPO indicator.
+        """Fetch one WIPO indicator for *country* (ISO alpha-2).
 
-        Columns (breakdown=True):  year, resident, non_resident, total
-        Columns (breakdown=False): year, total
+        Columns (has_origin=True):  year, resident, non_resident, total
+        Columns (has_origin=False): year, total
         """
-        cache_path = self._cache_path(country, indicator_code, start, end)
+        cache_path = self._cache_path(country, indicator_id, start, end)
         cached = self._load(cache_path)
 
         if cached is not None:
             logger.debug(f"WIPO cache hit: {cache_path.name}")
-            return self._parse(cached, indicator_code)
+            return self._parse(cached, has_origin)
 
-        params: dict[str, object] = {
-            "indicator": indicator_code,
-            "geo": country,
-            "start": start,
-            "end": end,
+        params = {
+            "type": "IPS",
+            "selectedTab": tab,
+            "indicator": indicator_id,
+            "reportType": "11",
+            "fromYear": start,
+            "toYear": end,
+            "ipsOffSelValues": country,
         }
-        if breakdown:
-            params["breakdown"] = "ORIGIN"
 
         try:
-            logger.info(f"WIPO API → indicator={indicator_code}, geo={country}")
+            logger.info(f"WIPO API → indicator={indicator_id}, geo={country}")
             resp = requests.get(
-                WIPO_API_BASE, params=params, headers=_HEADERS, timeout=30
+                _TABLE_RESULT, params=params, headers=_HEADERS, timeout=30
             )
             resp.raise_for_status()
             data = resp.json()
             self._save(cache_path, data)
-            return self._parse(data, indicator_code)
+            return self._parse(data, has_origin)
         except requests.exceptions.HTTPError as exc:
             logger.error(
-                f"WIPO HTTP error (ind={indicator_code}, geo={country}): "
+                f"WIPO HTTP error (ind={indicator_id}, geo={country}): "
                 f"{exc.response.status_code} {exc.response.text[:200]}"
             )
         except requests.exceptions.RequestException as exc:
-            logger.error(f"WIPO request error (ind={indicator_code}, geo={country}): {exc}")
+            logger.error(f"WIPO request error (ind={indicator_id}, geo={country}): {exc}")
         except Exception as exc:
-            logger.error(f"WIPO parse error (ind={indicator_code}): {exc}")
+            logger.error(f"WIPO parse error (ind={indicator_id}): {exc}")
 
         return pd.DataFrame()
 
     # ── Response parser ───────────────────────────────────────────────────────
 
-    def _parse(self, data: dict | list, indicator_code: int) -> pd.DataFrame:
-        """Normalise any WIPO response shape into a tidy DataFrame."""
-        if isinstance(data, list):
-            rows = data
-        elif isinstance(data, dict):
-            rows = data.get(
-                "data",
-                data.get("Dataset", data.get("records", data.get("results", []))),
-            )
-            if isinstance(rows, dict):
-                rows = [rows]
-        else:
+    def _parse(self, data: dict, has_origin: bool) -> pd.DataFrame:
+        """Parse the /table-result response into a tidy DataFrame.
+
+        The API returns each year value as a comma-separated string where one
+        value is the sum of the others (= total). For origin indicators the two
+        breakdown values are resident and non-resident filing counts.
+        """
+        records = data.get("records", [])
+        columns_meta = data.get("columns", [])
+
+        if not records:
             return pd.DataFrame()
+
+        year_cols = [
+            col["code"]
+            for col in columns_meta
+            if col.get("type") == "number"
+        ]
+        record = records[0]
+
+        rows = []
+        for yr_str in year_cols:
+            raw = record.get(yr_str)
+            if raw is None:
+                continue
+
+            try:
+                parts = [float(v.strip()) for v in str(raw).split(",") if v.strip()]
+            except ValueError:
+                continue
+
+            year = int(yr_str)
+
+            if len(parts) == 3 and has_origin:
+                a, b, c = parts
+                # Identify which value is the total (= sum of the other two).
+                if abs(a - b - c) < 1:
+                    total, p, q = a, b, c
+                elif abs(b - a - c) < 1:
+                    total, p, q = b, a, c
+                else:
+                    total, p, q = c, a, b
+                resident = max(p, q)
+                non_resident = min(p, q)
+                rows.append(
+                    {
+                        "year": year,
+                        "resident": resident,
+                        "non_resident": non_resident,
+                        "total": total,
+                    }
+                )
+            else:
+                # GI or single-value: sum all parts for total.
+                rows.append({"year": year, "total": sum(parts)})
 
         if not rows:
             return pd.DataFrame()
 
         df = pd.DataFrame(rows)
-        df.columns = [str(c).lower().strip() for c in df.columns]
-
-        # ── year column ──
-        year_col = next(
-            (c for c in df.columns if c in ("year", "yr", "periodfrom", "period", "date")),
-            None,
-        )
-        if year_col is None:
-            logger.warning(f"WIPO ind={indicator_code}: no year column in {list(df.columns)}")
-            return pd.DataFrame()
-        df = df.rename(columns={year_col: "year"})
-        df["year"] = pd.to_numeric(df["year"].astype(str).str[:4], errors="coerce")
-        df = df.dropna(subset=["year"])
         df["year"] = df["year"].astype(int)
+        for col in df.columns:
+            if col != "year":
+                df[col] = pd.to_numeric(df[col], errors="coerce")
 
-        # ── value column ──
-        value_col = next(
-            (c for c in df.columns if c in ("value", "val", "count", "total", "number")),
-            None,
-        )
-        if value_col is None:
-            logger.warning(f"WIPO ind={indicator_code}: no value column in {list(df.columns)}")
-            return pd.DataFrame()
-        df["value"] = pd.to_numeric(df[value_col], errors="coerce")
-
-        # ── origin breakdown ──
-        origin_col = next(
-            (
-                c
-                for c in df.columns
-                if c in ("origin", "breakdown", "applicant_origin", "origin_code", "type")
-            ),
-            None,
-        )
-
-        if origin_col:
-            df["origin"] = (
-                df[origin_col]
-                .astype(str)
-                .str.upper()
-                .str.strip()
-                .replace(
-                    {
-                        "NON_RESIDENT": "NONRESIDENT",
-                        "NON-RESIDENT": "NONRESIDENT",
-                        "FOREIGN": "NONRESIDENT",
-                        "NR": "NONRESIDENT",
-                        "R": "RESIDENT",
-                        "RES": "RESIDENT",
-                    }
-                )
-            )
-            pivot = (
-                df.pivot_table(
-                    index="year", columns="origin", values="value", aggfunc="sum"
-                )
-                .reset_index()
-            )
-            pivot.columns.name = None
-
-            rename: dict[str, str] = {}
-            for col in pivot.columns:
-                u = str(col).upper()
-                if u == "RESIDENT":
-                    rename[col] = "resident"
-                elif u in ("NONRESIDENT", "NON_RESIDENT"):
-                    rename[col] = "non_resident"
-                elif u in ("TOTAL", "ALL"):
-                    rename[col] = "total"
-            pivot = pivot.rename(columns=rename)
-
-            if "total" not in pivot.columns:
-                res = pivot.get("resident", pd.Series(dtype=float))
-                nr = pivot.get("non_resident", pd.Series(dtype=float))
-                pivot["total"] = res.fillna(0) + nr.fillna(0)
-
-            keep = ["year"] + [
-                c for c in ("resident", "non_resident", "total") if c in pivot.columns
-            ]
-            return pivot[keep].sort_values("year").reset_index(drop=True)
-
-        # No origin breakdown — just total
-        out = df[["year", "value"]].copy().rename(columns={"value": "total"})
-        return out.sort_values("year").reset_index(drop=True)
+        return df.sort_values("year").reset_index(drop=True)
 
     # ── Bulk fetch ────────────────────────────────────────────────────────────
 
@@ -266,10 +244,11 @@ class WIPOExtractor:
             logger.info(f"Fetching {meta['name']} for {country}…")
             result[key] = self.fetch_indicator(
                 country,
-                meta["code"],
+                meta["tab"],
+                meta["id"],
+                meta["has_origin"],
                 start,
                 end,
-                breakdown=meta["has_origin"],
             )
-            time.sleep(0.4)  # polite delay
+            time.sleep(0.4)
         return result
