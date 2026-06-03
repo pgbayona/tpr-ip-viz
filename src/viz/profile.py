@@ -154,11 +154,9 @@ def _compute_derived(country_name: str, profile: CountryProfile) -> dict:
         }
 
         main = narrative_snippet(country_name, ind_name, df)
-        narratives.append({"indicator": ind_name, "text": main})
-
         res_note = generate_resident_narrative(country_name, ind_name, df)
-        if res_note:
-            narratives.append({"indicator": f"{ind_name} (resident split)", "text": res_note})
+        text = f"{main} {res_note}" if res_note else main
+        narratives.append({"indicator": ind_name, "text": text})
 
     # IP services overview + narratives
     ip = profile.ip_services
