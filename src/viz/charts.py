@@ -146,7 +146,7 @@ def resident_share_line(
 
 def ip_services_chart(df: pd.DataFrame, country_name: str) -> go.Figure:
     """Line chart of IP service exports, imports, and balance."""
-    title = f"Trade in IP Services — {country_name} (USD million)"
+    title = f"Charges for the Use of IP — {country_name} (USD million)"
     if df.empty:
         return _no_data(title)
 
