@@ -251,7 +251,7 @@ with tab3:
 # TAB 4 — Trade in IP Services
 # ─────────────────────────────────────────────────────────────────────────────
 with tab4:
-    st.subheader(f"Trade in Intellectual Property Services — {country_name}")
+    st.subheader(f"Charges for the Use of Intellectual Property — {country_name}")
 
     ip_svc = profile.ip_services
 
