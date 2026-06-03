@@ -170,15 +170,16 @@ WTO_MEMBERS: dict[str, str] = {
     "Yemen": "YE",
     "Zambia": "ZM",
     "Zimbabwe": "ZW",
-    # Non-WTO entry: EPO office data is widely used in TPR reviews
+    # Non-WTO entries: regional IP offices widely used in TPR reviews
     "European Union (EPO)": "EP",
+    "European Union (EUIPO)": "EM",
 }
 
 # Reverse lookup: alpha-2 → display name
 _CODE_TO_NAME: dict[str, str] = {v: k for k, v in WTO_MEMBERS.items()}
 
 # Non-ISO codes that pycountry doesn't know about: alpha-2 → alpha-3 sentinel
-_EXTRA_ALPHA3: dict[str, str] = {"EP": "EP"}
+_EXTRA_ALPHA3: dict[str, str] = {"EP": "EP", "EM": "EM"}
 
 
 # ── Country code resolution ───────────────────────────────────────────────────
