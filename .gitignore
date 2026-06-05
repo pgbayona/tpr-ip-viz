@@ -15,6 +15,7 @@ build/
 
 # Secrets
 .env
+.env.txt
 .streamlit/secrets.toml
 
 # Data cache runtime files
