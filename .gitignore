@@ -17,14 +17,12 @@ build/
 .env
 .streamlit/secrets.toml
 
-# Data cache (can be large; regenerated on demand)
-data/raw/
-data/processed/
+# Data cache runtime files
 data/prefetch.log
 data/.prefetch_running
 
-# Excel template (user-provided; not committed)
-templates/TPR_IP_Template.xlsx
+# Excel template — committed for Streamlit Cloud deployment
+# templates/TPR_IP_Template.xlsx
 
 # IDE
 .vscode/
