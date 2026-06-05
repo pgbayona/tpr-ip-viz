@@ -20,6 +20,8 @@ build/
 # Data cache (can be large; regenerated on demand)
 data/raw/
 data/processed/
+data/prefetch.log
+data/.prefetch_running
 
 # Excel template (user-provided; not committed)
 templates/TPR_IP_Template.xlsx

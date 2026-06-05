@@ -1,7 +1,9 @@
 """Excel Generator — download a pre-populated TPR IP workbook."""
 from __future__ import annotations
 
+import json
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 
 import streamlit as st
@@ -9,6 +11,27 @@ import streamlit as st
 _ROOT = Path(__file__).resolve().parents[2]
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
+
+_CACHE_META = _ROOT / "data" / "last_refreshed.json"
+
+
+def _cache_status() -> str:
+    """Return a human-readable cache freshness string."""
+    if not _CACHE_META.exists():
+        return "Data cache not yet built. Run `python scripts/prefetch_data.py` first."
+    try:
+        meta = json.loads(_CACHE_META.read_text())
+        ts = datetime.fromisoformat(meta["refreshed_at"])
+        age_days = (datetime.now(timezone.utc) - ts).days
+        ok = meta.get("success_count", "?")
+        total = meta.get("total_countries", "?")
+        date_str = ts.strftime("%d %b %Y")
+        return (
+            f"Cache last refreshed: **{date_str}** ({age_days} days ago) · "
+            f"{ok}/{total} countries · years {meta.get('start_year')}–{meta.get('end_year')}"
+        )
+    except Exception:
+        return "Cache metadata unreadable."
 
 try:
     from dotenv import load_dotenv
@@ -20,11 +43,6 @@ except ImportError:
 from src.viz.profile import assemble_country_profile, CountryProfile
 from src.excel.template_writer import write_country_workbook
 
-st.set_page_config(
-    page_title="Excel Generator | TPR IP Viz",
-    page_icon="📥",
-    layout="wide",
-)
 
 # ── Guard ─────────────────────────────────────────────────────────────────────
 if "country_name" not in st.session_state:
@@ -47,12 +65,9 @@ def _load(name: str, s: int, e: int) -> CountryProfile:
 
 # ── Page header ───────────────────────────────────────────────────────────────
 st.markdown(f"""
-<div style="background:linear-gradient(90deg,#005A8C,#00A9E0);
-            padding:1rem 1.5rem;border-radius:8px;margin-bottom:1.5rem;">
-  <h2 style="color:white;margin:0;">📥 Excel Generator — {country_name}</h2>
-  <p style="color:rgba(255,255,255,0.85);margin:0;">
-    Generate and download a pre-populated TPR IP workbook
-  </p>
+<div class="page-hero">
+  <h2>Excel Generator &mdash; {country_name}</h2>
+  <p>Generate and download a pre-populated TPR IP workbook</p>
 </div>
 """, unsafe_allow_html=True)
 
@@ -65,6 +80,9 @@ else:
         "Drop your template there to use chart placeholders.  "
         "A plain data workbook will be generated until then."
     )
+
+# Cache freshness banner
+st.info(_cache_status())
 
 # Workbook description
 st.markdown(f"""
@@ -81,10 +99,9 @@ st.markdown(f"""
 | 7 | Utility Model Applications | Year · Resident · Non-Resident · Total |
 | 8 | Utility Model Grants | Year · Resident · Non-Resident · Total |
 | 9 | Geographical Indications | Year · Total |
-| 10 | IP Service Exports | Year · USD million |
-| 11 | IP Service Imports | Year · USD million |
+| 10 | (BOP) Charges for the Use of IP | Year · Imports · Exports |
 
-Coverage: **{START}–{END}** · Country: **{country_name} ({country_code})**
+Coverage: **latest 7 years up to {END}** · Country: **{country_name} ({country_code})**
 """)
 
 st.divider()

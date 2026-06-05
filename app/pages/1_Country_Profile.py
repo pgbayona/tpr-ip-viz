@@ -20,25 +20,6 @@ except ImportError:
 from src.viz.profile import assemble_country_profile, CountryProfile
 from src.viz import charts
 
-st.set_page_config(
-    page_title="Country Profile | TPR IP Viz",
-    page_icon="📊",
-    layout="wide",
-)
-
-st.markdown("""
-<style>
-    .tab-header { font-size: 1.05rem; font-weight: 600; color: #005A8C; }
-    .narrative-box {
-        background: #F8FAFC;
-        border: 1px solid #D0E4F0;
-        border-radius: 6px;
-        padding: 0.8rem 1rem;
-        font-size: 0.95rem;
-        line-height: 1.6;
-    }
-</style>
-""", unsafe_allow_html=True)
 
 # ── Guard ─────────────────────────────────────────────────────────────────────
 if "country_name" not in st.session_state:
@@ -60,12 +41,9 @@ def _load(name: str, s: int, e: int) -> CountryProfile:
 
 # ── Page header ───────────────────────────────────────────────────────────────
 st.markdown(f"""
-<div style="background:linear-gradient(90deg,#005A8C,#00A9E0);
-            padding:1rem 1.5rem;border-radius:8px;margin-bottom:1rem;">
-  <h2 style="color:white;margin:0;">📊 {country_name} — IP Country Profile</h2>
-  <p style="color:rgba(255,255,255,0.85);margin:0;">
-    WIPO IP Statistics + WTO Services Trade · {START}–{END}
-  </p>
+<div class="page-hero">
+  <h2>{country_name} — Economy IP Profile</h2>
+  <p>WIPO IP Statistics + WTO Services Trade &nbsp;·&nbsp; {START}–{END}</p>
 </div>
 """, unsafe_allow_html=True)
 

@@ -1,13 +1,13 @@
 """Methodology — static documentation page."""
 import streamlit as st
 
-st.set_page_config(
-    page_title="Methodology | TPR IP Viz",
-    page_icon="📖",
-    layout="wide",
-)
 
-st.title("📖 Methodology")
+st.markdown("""
+<div class="page-hero">
+  <h2>Methodology</h2>
+  <p>Data sources, derived indicators, and technical notes</p>
+</div>
+""", unsafe_allow_html=True)
 
 st.markdown("""
 ## Data Sources
