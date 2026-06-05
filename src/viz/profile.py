@@ -14,7 +14,7 @@ _ROOT = Path(__file__).resolve().parents[2]
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
-from src.extract.wipo import WIPOExtractor
+from src.extract.wipo import WIPOExtractor, INDICATORS
 from src.extract.wto import WTOExtractor
 from src.transform.cleaning import (
     get_alpha2,
@@ -69,6 +69,44 @@ class CountryProfile:
         }
 
 
+# ── EU combined WIPO source map ───────────────────────────────────────────────
+# Patents come from EPO (EP); trademarks, designs, GIs, utility models from EUIPO (EM).
+_EU_WIPO_SOURCES: dict[str, str] = {
+    "patent_applications":        "EP",
+    "patent_grants":              "EP",
+    "trademark_applications":     "EM",
+    "trademark_registrations":    "EM",
+    "design_applications":        "EM",
+    "design_registrations":       "EM",
+    "utility_model_applications": "EM",
+    "utility_model_grants":       "EM",
+    "geographical_indications":   "EM",
+}
+
+
+def _fetch_wipo_eu(start: int, end: int) -> dict[str, pd.DataFrame]:
+    """Fetch EU WIPO data routing each indicator to the correct office."""
+    extractor = WIPOExtractor()
+    result: dict[str, pd.DataFrame] = {}
+
+    def _fetch(key: str, meta: dict, office: str) -> tuple[str, pd.DataFrame]:
+        return key, extractor.fetch_indicator(
+            office, meta["tab"], meta["id"], meta["has_origin"], start, end
+        )
+
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+    with ThreadPoolExecutor(max_workers=len(INDICATORS)) as pool:
+        futures = {
+            pool.submit(_fetch, k, m, _EU_WIPO_SOURCES[k]): k
+            for k, m in INDICATORS.items()
+        }
+        for future in as_completed(futures):
+            key, df = future.result()
+            result[key] = df
+
+    return result
+
+
 # ── Assembly function ─────────────────────────────────────────────────────────
 
 def assemble_country_profile(
@@ -98,6 +136,8 @@ def assemble_country_profile(
         if not alpha2:
             logger.warning(f"Could not resolve alpha-2 for {country_input!r} — WIPO data skipped")
             return {}
+        if alpha2 == "EU":
+            return _fetch_wipo_eu(start_year, end_year)
         return WIPOExtractor().get_all_ip_data(alpha2, start_year, end_year)
 
     def _fetch_wto():

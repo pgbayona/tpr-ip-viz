@@ -1,24 +1,26 @@
-"""Plotly chart builders using WTO brand colours."""
+"""Plotly chart builders using WTO IP Division colour palette."""
 from __future__ import annotations
 
 import pandas as pd
 import plotly.graph_objects as go
 
-# ── WTO brand palette ─────────────────────────────────────────────────────────
+# ── IP Division palette ───────────────────────────────────────────────────────
+# Navy → WTO blue → teal → slate → gold → rust
 WTO_COLORS = {
-    "primary":   "#005A8C",
-    "accent":    "#00A9E0",
-    "highlight": "#F0A500",
-    "positive":  "#2E8B57",
-    "negative":  "#C0392B",
-    "neutral":   "#7F8C8D",
-    "bg":        "#F8FAFC",
+    "primary":   "#002F5F",   # deep navy
+    "secondary": "#004C97",   # WTO blue
+    "teal":      "#007B8A",   # teal
+    "highlight": "#B8860B",   # dark gold
+    "positive":  "#2A6E4F",   # forest green
+    "negative":  "#9E2A2B",   # deep rust
+    "neutral":   "#5C6B7A",   # blue-grey slate
+    "bg":        "#F4F8FC",   # very light blue-white
 }
 
 _LAYOUT = dict(
     plot_bgcolor=WTO_COLORS["bg"],
     paper_bgcolor="white",
-    font=dict(family="Arial, sans-serif", size=12, color="#333333"),
+    font=dict(family="Arial, sans-serif", size=12, color="#2B2B2B"),
     legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
     margin=dict(l=50, r=30, t=60, b=50),
     hovermode="x unified",
@@ -56,9 +58,9 @@ def time_series_chart(
 
     fig = _base(title, "Number of Applications / Grants / Registrations")
 
-    _add_line(fig, df, "resident",    "Resident",     WTO_COLORS["primary"], "solid")
-    _add_line(fig, df, "non_resident","Non-Resident",  WTO_COLORS["accent"],  "dash")
-    _add_line(fig, df, "total",       "Total",         WTO_COLORS["highlight"], "solid",
+    _add_line(fig, df, "resident",     "Resident",     WTO_COLORS["secondary"], "solid")
+    _add_line(fig, df, "non_resident", "Non-Resident", WTO_COLORS["teal"],      "dash")
+    _add_line(fig, df, "total",        "Total",        WTO_COLORS["primary"],   "solid",
               marker_symbol="diamond", width=2.5, marker_size=7)
 
     return fig
@@ -101,13 +103,13 @@ def resident_foreign_bar(
     fig.add_trace(go.Bar(
         x=df["year"], y=df["resident"],
         name="Resident",
-        marker_color=WTO_COLORS["primary"],
+        marker_color=WTO_COLORS["secondary"],
     ))
     if "non_resident" in df.columns and df["non_resident"].notna().any():
         fig.add_trace(go.Bar(
             x=df["year"], y=df["non_resident"],
             name="Non-Resident",
-            marker_color=WTO_COLORS["accent"],
+            marker_color=WTO_COLORS["teal"],
         ))
 
     fig.update_layout(barmode="stack")
@@ -128,9 +130,9 @@ def resident_share_line(
         y=df["resident_share_pct"],
         name="Resident Share",
         mode="lines+markers",
-        line=dict(color=WTO_COLORS["highlight"], width=2),
+        line=dict(color=WTO_COLORS["secondary"], width=2),
         fill="tozeroy",
-        fillcolor="rgba(240,165,0,0.12)",
+        fillcolor="rgba(0,76,151,0.10)",
         connectgaps=False,
     ))
     fig.add_hline(
@@ -157,14 +159,14 @@ def ip_services_chart(df: pd.DataFrame, country_name: str) -> go.Figure:
             x=df["year"], y=df["exports_usd"],
             name="Exports (credits)",
             mode="lines+markers",
-            line=dict(color=WTO_COLORS["positive"], width=2),
+            line=dict(color=WTO_COLORS["secondary"], width=2.5),
         ))
     if "imports_usd" in df.columns and df["imports_usd"].notna().any():
         fig.add_trace(go.Scatter(
             x=df["year"], y=df["imports_usd"],
             name="Imports (debits)",
             mode="lines+markers",
-            line=dict(color=WTO_COLORS["negative"], width=2),
+            line=dict(color=WTO_COLORS["teal"], width=2.5, dash="dash"),
         ))
     if "balance_usd" in df.columns and df["balance_usd"].notna().any():
         balance_colors = [
@@ -201,7 +203,7 @@ def gi_bar_chart(df: pd.DataFrame, country_name: str) -> go.Figure:
     fig = _base(title, "Count")
     fig.add_trace(go.Bar(
         x=df["year"], y=df["total"],
-        marker_color=WTO_COLORS["primary"],
+        marker_color=WTO_COLORS["secondary"],
         name="GIs",
     ))
     return fig

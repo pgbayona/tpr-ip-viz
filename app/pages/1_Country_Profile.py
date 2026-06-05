@@ -43,7 +43,7 @@ def _load(name: str, s: int, e: int) -> CountryProfile:
 st.markdown(f"""
 <div class="page-hero">
   <h2>{country_name} — Economy IP Profile</h2>
-  <p>WIPO IP Statistics + WTO Services Trade &nbsp;·&nbsp; {START}–{END}</p>
+  <p>WIPO IP Statistics Data Center &amp; WTO Stats Portal &nbsp;·&nbsp; {START}–{END}</p>
 </div>
 """, unsafe_allow_html=True)
 
@@ -52,11 +52,11 @@ with st.spinner(f"Loading IP data for {country_name}…"):
 
 # ── Tabs ──────────────────────────────────────────────────────────────────────
 tab1, tab2, tab3, tab4, tab5 = st.tabs([
-    "📋 IP Overview",
-    "📈 Time Series",
-    "🏠 Resident vs Foreign",
-    "💱 IP Services Trade",
-    "📝 TPR Narrative",
+    "IP Overview",
+    "Time Series",
+    "Resident vs Non-Resident",
+    "(BOP) Charges for the Use of IP",
+    "TPR Narrative",
 ])
 
 # ─────────────────────────────────────────────────────────────────────────────

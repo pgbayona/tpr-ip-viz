@@ -55,7 +55,7 @@ if "country_name" not in st.session_state:
 country_name = st.session_state["country_name"]
 country_code = st.session_state.get("country_code", "XX")
 TEMPLATE_PATH = _ROOT / "templates" / "TPR_IP_Template.xlsx"
-START, END = 2010, 2024
+START, END = 2004, 2024
 
 
 @st.cache_data(ttl=3600, show_spinner=False)
@@ -84,25 +84,75 @@ else:
 # Cache freshness banner
 st.info(_cache_status())
 
-# Workbook description
+# ── Summary sheet preview ─────────────────────────────────────────────────────
+from datetime import date as _date
+import pandas as _pd
+from src.excel.template_writer import SHEET_CONFIG, _SUMMARY_ROW_MAP
+
+_pulled   = _date.today().strftime("%d/%m/%Y")
+_wipo_src = f"WIPO IP Statistics Data Center. Viewed at: https://www3.wipo.int/ipstats ({_pulled})."
+_wto_src  = f"WTO Stats Portal. Viewed at: https://stats.wto.org/ ({_pulled})."
+
+# Load profile (cached) and compute per-indicator actual year ranges
+with st.spinner("Computing data coverage…"):
+    _preview_profile = _load(country_name, START, END)
+
+_sheet_year_range: dict[str, str] = {}
+for attr, hint, _ in SHEET_CONFIG:
+    _df = getattr(_preview_profile, attr, _pd.DataFrame())
+    if not isinstance(_df, _pd.DataFrame) or _df.empty or "year" not in _df.columns:
+        _sheet_year_range[hint] = "N/A"
+        continue
+    _val_cols = [c for c in _df.columns if c != "year"]
+    if _val_cols:
+        _df = _df[_df[_val_cols].notna().any(axis=1)]
+    _df = _df.sort_values("year").tail(7)
+    if _df.empty:
+        _sheet_year_range[hint] = "N/A"
+    else:
+        _sheet_year_range[hint] = f"{int(_df['year'].min())}–{int(_df['year'].max())}"
+
+_rows_html = ""
+for i, ((_, label, src_type), (_, hint, _)) in enumerate(
+    zip(_SUMMARY_ROW_MAP, SHEET_CONFIG), start=1
+):
+    yr        = _sheet_year_range.get(hint, "N/A")
+    title_cell  = f"{country_name} {label}: {yr}" if yr != "N/A" else f"{country_name} {label}: no data"
+    source_cell = _wipo_src if src_type == "WIPO" else _wto_src
+    badge_color = "#004C97" if src_type == "WIPO" else "#007B8A"
+    row_bg      = "#F4F8FC" if i % 2 == 0 else "#FFFFFF"
+    na_style    = "color:#AAA;font-style:italic;" if yr == "N/A" else "font-weight:500;color:#002F5F;"
+    _rows_html += f"""
+    <tr style="background:{row_bg};">
+      <td style="padding:6px 10px;color:#555;font-size:0.82rem;width:28px;text-align:center;">{i}</td>
+      <td style="padding:6px 12px;{na_style}">{title_cell}</td>
+      <td style="padding:6px 12px;color:#555;font-size:0.8rem;font-style:italic;">{source_cell}</td>
+      <td style="padding:6px 10px;text-align:center;">
+        <span style="background:{badge_color};color:white;font-size:0.72rem;padding:2px 7px;border-radius:3px;font-weight:600;">{src_type}</span>
+      </td>
+    </tr>"""
+
 st.markdown(f"""
-**Contents of `TPR_IP_{country_code}.xlsx`:**
-
-| Sheet | Contents | Columns |
-|-------|----------|---------|
-| 1 | Patent Applications | Year · Resident · Non-Resident · Total |
-| 2 | Patent Grants | Year · Resident · Non-Resident · Total |
-| 3 | Trademark Applications | Year · Resident · Non-Resident · Total |
-| 4 | Trademark Registrations | Year · Resident · Non-Resident · Total |
-| 5 | Industrial Design Applications | Year · Resident · Non-Resident · Total |
-| 6 | Industrial Design Registrations | Year · Resident · Non-Resident · Total |
-| 7 | Utility Model Applications | Year · Resident · Non-Resident · Total |
-| 8 | Utility Model Grants | Year · Resident · Non-Resident · Total |
-| 9 | Geographical Indications | Year · Total |
-| 10 | (BOP) Charges for the Use of IP | Year · Imports · Exports |
-
-Coverage: **latest 7 years up to {END}** · Country: **{country_name} ({country_code})**
-""")
+<div style="margin-bottom:1.2rem;">
+  <div style="font-size:0.78rem;font-weight:700;letter-spacing:0.08em;color:#7F8C8D;text-transform:uppercase;margin-bottom:0.5rem;">
+    Summary Sheet Preview &nbsp;·&nbsp; {country_name} ({country_code})
+  </div>
+  <table style="width:100%;border-collapse:collapse;border:1px solid #D0DEF0;border-radius:6px;overflow:hidden;font-family:Arial,sans-serif;font-size:0.88rem;">
+    <thead>
+      <tr style="background:#002F5F;color:white;">
+        <th style="padding:7px 10px;width:28px;">#</th>
+        <th style="padding:7px 12px;text-align:left;">Chart / Table Title</th>
+        <th style="padding:7px 12px;text-align:left;">Source Citation</th>
+        <th style="padding:7px 10px;width:52px;">Source</th>
+      </tr>
+    </thead>
+    <tbody>{_rows_html}</tbody>
+  </table>
+  <div style="font-size:0.77rem;color:#888;margin-top:0.4rem;">
+    Year ranges reflect actual WIPO/WTO data availability per indicator (latest 7 years with data).
+  </div>
+</div>
+""", unsafe_allow_html=True)
 
 st.divider()
 

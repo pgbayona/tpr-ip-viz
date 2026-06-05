@@ -37,9 +37,15 @@ _WTO_CACHE  = _ROOT / "data" / "raw" / "wto"
 def _fetch_one(name: str, alpha2: str, alpha3: str | None, start: int, end: int) -> list[str]:
     """Fetch all indicators for one country. Returns list of error strings (empty = success)."""
     errors: list[str] = []
+    extractor = WIPOExtractor()
 
     try:
-        WIPOExtractor().get_all_ip_data(alpha2, start, end)
+        if alpha2 == "EU":
+            # Combined EU: patents from EPO (EP), everything else from EUIPO (EM)
+            from src.viz.profile import _EU_WIPO_SOURCES, _fetch_wipo_eu
+            _fetch_wipo_eu(start, end)
+        else:
+            extractor.get_all_ip_data(alpha2, start, end)
     except Exception as exc:
         errors.append(f"WIPO: {exc}")
 

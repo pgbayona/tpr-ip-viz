@@ -24,6 +24,7 @@ IP_INDICATORS = {
 _EXTRA_NUMERIC: dict[str, str] = {
     "EP": "918",  # European Union (EPO filings → EU trade reporter)
     "EM": "918",  # European Union (EUIPO filings → EU trade reporter)
+    "EU": "918",  # European Union combined entry
 }
 
 

@@ -127,7 +127,7 @@ st.markdown("""
 
 pages = st.navigation([
     st.Page("pages/select_economy.py", title="Select Economy"),
-    st.Page("pages/1_Country_Profile.py", title="Economy IP Profile"),
+    st.Page("pages/1_Country_Profile.py", title="IP Profile"),
     st.Page("pages/2_Excel_Generator.py", title="Excel Generator"),
     st.Page("pages/3_Methodology.py", title="Methodology"),
 ])

@@ -1,7 +1,6 @@
 """Select Economy — WTO member selector and app home."""
 from __future__ import annotations
 
-import base64
 import json
 import subprocess
 import sys
@@ -62,36 +61,41 @@ if not is_running:
         is_running = True
 
 
-# ── Hero header (with inline logo) ───────────────────────────────────────────
+# ── Logo + Hero ───────────────────────────────────────────────────────────────
 
-def _logo_html_snippet() -> str:
-    svg_path = _ROOT / "app" / "static" / "wto_logo.svg"
-    if svg_path.exists():
-        svg = svg_path.read_text(encoding="utf-8")
-        # Strip XML declaration and embed inline, constrained to 64px height
-        svg = svg.replace('<?xml version="1.0" encoding="UTF-8" standalone="no"?>', "")
-        svg = svg.replace("<svg ", '<svg style="height:90px;width:auto;display:block;" ', 1)
-        return f'<div style="background:rgba(255,255,255,0.12);border-radius:8px;padding:0.55rem 0.8rem;">{svg}</div>'
-    for p in (
+_LOGO_PATH = next(
+    (p for p in (
+        _ROOT / "app" / "static" / "wto_logo_full.svg",
+        _ROOT / "app" / "static" / "wto_logo.svg",
         _ROOT / "app" / "static" / "wto_logo.png",
         _ROOT / "app" / "static" / "wto_logo.jpg",
-    ):
-        if p.exists():
-            mime = f"image/{p.suffix[1:]}"
-            b64 = base64.b64encode(p.read_bytes()).decode()
-            return f'<img src="data:{mime};base64,{b64}" height="64" style="display:block;">'
-    return ""
+    ) if p.exists()),
+    None,
+)
 
-_logo_html = _logo_html_snippet()
+_logo_mime = "svg+xml" if _LOGO_PATH and str(_LOGO_PATH).endswith(".svg") else "jpeg"
+_logo_b64  = __import__("base64").b64encode(_LOGO_PATH.read_bytes()).decode() if _LOGO_PATH else ""
+_logo_img  = (
+    f'<img src="data:image/{_logo_mime};base64,{_logo_b64}" height="52" style="display:block;">'
+    if _LOGO_PATH else ""
+)
 
 st.markdown(f"""
-<div class="hero" style="display:flex;justify-content:space-between;align-items:center;gap:1.5rem;">
+<div style="
+    display:flex;
+    align-items:center;
+    gap:1.1rem;
+    padding:0.65rem 0 0.9rem;
+    border-bottom:2px solid #004C97;
+    margin-bottom:1.4rem;
+">
+  {_logo_img}
+  <div style="width:1px;height:44px;background:#C5DDF0;flex-shrink:0;{'display:none' if not _LOGO_PATH else ''}"></div>
   <div>
-    <h1>WTO TPR&nbsp;IP&nbsp;Viz</h1>
-    <p>Trade Policy Review &mdash; Intellectual Property Statistics Dashboard &amp; Excel Generator</p>
-    <p class="division">Intellectual Property, Government Procurement and Competition Division</p>
+    <div style="font-size:1.25rem;font-weight:700;color:#002F5F;line-height:1.2;">WTO TPR IP Viz</div>
+    <div style="font-size:0.82rem;color:#555;margin-top:0.1rem;">Trade Policy Review &mdash; Intellectual Property Statistics Dashboard &amp; Excel Generator</div>
+    <div style="font-size:0.76rem;color:#888;margin-top:0.05rem;">Intellectual Property, Government Procurement and Competition Division</div>
   </div>
-  {_logo_html}
 </div>
 """, unsafe_allow_html=True)
 
@@ -117,7 +121,7 @@ with col_left:
         label_visibility="collapsed",
     )
 
-    if st.button("Generate TPR IP Profile", type="primary"):
+    if st.button("Generate IP Profile", type="primary"):
         st.session_state["country_name"] = selected
         st.session_state["country_code"] = WTO_MEMBERS[selected]
 
@@ -126,7 +130,7 @@ with col_left:
         ccode = st.session_state["country_code"]
         st.success(
             f"**{cname}** ({ccode}) selected.  "
-            "Navigate to **Country Profile** or **Excel Generator** in the sidebar."
+            "Navigate to **IP Profile** or **Excel Generator** in the sidebar."
         )
 
 # ── Info panel ────────────────────────────────────────────────────────────────
