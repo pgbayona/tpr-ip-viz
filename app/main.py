@@ -23,6 +23,13 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
+# Discourage search engine indexing.
+# Not a security measure — the password gate handles access control.
+st.markdown(
+    '<meta name="robots" content="noindex, nofollow">',
+    unsafe_allow_html=True,
+)
+
 # WTO logo — drop wto_logo.png into app/static/ to enable
 
 # Global CSS shared across all pages
@@ -124,6 +131,45 @@ st.markdown("""
     h3, h5 { color: #003A5C !important; }
 </style>
 """, unsafe_allow_html=True)
+
+# ── Password gate ─────────────────────────────────────────────────────────────
+
+def _check_password() -> bool:
+    if st.session_state.get("_auth_ok"):
+        return True
+
+    st.markdown("""
+    <div style="max-width:380px;margin:4rem auto 0;">
+      <div style="
+          background:linear-gradient(100deg,#002F5F 0%,#004C97 60%,#0062B8 100%);
+          border-radius:10px;border-bottom:3px solid rgba(255,255,255,0.35);
+          box-shadow:0 2px 12px rgba(0,40,100,0.22);
+          padding:1.6rem 2rem 1.4rem;margin-bottom:1.6rem;text-align:center;">
+        <div style="color:white;font-size:1.3rem;font-weight:700;letter-spacing:-0.01em;">WTO TPR IP Viz</div>
+        <div style="color:rgba(255,255,255,0.75);font-size:0.82rem;margin-top:0.3rem;">
+          Intellectual Property, Government Procurement and Competition Division
+        </div>
+      </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    col = st.columns([1, 2, 1])[1]
+    with col:
+        pwd = st.text_input("Password", type="password", key="_pwd_input",
+                            placeholder="Enter access password")
+        if pwd:
+            if pwd == st.secrets.get("APP_PASSWORD", ""):
+                st.session_state["_auth_ok"] = True
+                st.rerun()
+            else:
+                st.error("Incorrect password. Please try again.")
+    return False
+
+
+if not _check_password():
+    st.stop()
+
+# ── Page navigation ────────────────────────────────────────────────────────────
 
 pages = st.navigation([
     st.Page("pages/select_economy.py", title="Select Economy"),
