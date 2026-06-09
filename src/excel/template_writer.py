@@ -172,26 +172,15 @@ def _update_shared_strings(
     wto_src: str,
 ) -> tuple[bytes, list[int], int, int]:
     """
-    Parse sharedStrings.xml with ET (read-only), then do targeted string
-    replacements so the output bytes preserve the original namespace declarations.
+    Always appends fresh <si> entries for indicator titles so each gets a
+    unique index — avoids keyword-collision bugs from find-and-replace logic.
+    Source strings (WIPO/WTO) reuse existing entries when found.
     Returns (new_xml_bytes, d_col_indices, wipo_str_idx, wto_str_idx).
     """
     NS = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
-    root     = ET.fromstring(ss_xml)
-    si_list  = root.findall(f"{{{NS}}}si")
-    strings  = [_get_si_text(si, NS) for si in si_list]
-
-    indicator_keywords = [label.split()[0].lower() for _, label, _ in _SUMMARY_ROW_MAP]
-
-    # Find existing indices for title strings (match by keyword + year pattern)
-    title_indices: list[int | None] = []
-    for kw in indicator_keywords:
-        idx = next(
-            (i for i, s in enumerate(strings)
-             if s and kw in s.lower() and re.search(r"\d{4}-\d{4}", s)),
-            None,
-        )
-        title_indices.append(idx)
+    root    = ET.fromstring(ss_xml)
+    si_list = root.findall(f"{{{NS}}}si")
+    strings = [_get_si_text(si, NS) for si in si_list]
 
     wipo_idx_found = next((i for i, s in enumerate(strings) if s and "wipo.int" in s.lower()), None)
     wto_idx_found  = next((i for i, s in enumerate(strings) if s and "stats.wto.org" in s.lower()), None)
@@ -199,34 +188,25 @@ def _update_shared_strings(
     xml_str = ss_xml.decode("utf-8")
 
     def _replace_si_text(xml: str, idx: int, new_text: str) -> str:
-        """Replace the text inside the idx-th <si> element."""
-        # Find the idx-th <si> occurrence
         pos = 0
         for _ in range(idx + 1):
             pos = xml.index("<si>", pos) + 4
         si_end = xml.index("</si>", pos)
-        old_si_content = xml[pos:si_end]
-        new_si_content = f"<t>{_xml_escape(new_text)}</t>"
-        return xml[:pos] + new_si_content + xml[si_end:]
+        return xml[:pos] + f"<t>{_xml_escape(new_text)}</t>" + xml[si_end:]
 
     def _append_si(xml: str, new_text: str) -> tuple[str, int]:
-        """Append a new <si> before </sst> and return (new_xml, new_index)."""
         new_si = f"<si><t>{_xml_escape(new_text)}</t></si>"
         insert_pos = xml.rfind("</sst>")
-        xml = xml[:insert_pos] + new_si + xml[insert_pos:]
-        # Count total <si> before the new one
-        idx = xml[:insert_pos].count("<si>")
-        return xml, idx
+        new_xml = xml[:insert_pos] + new_si + xml[insert_pos:]
+        idx = new_xml[:insert_pos + len(new_si)].count("<si>") - 1
+        return new_xml, idx
 
+    # Always append a fresh string for every indicator title — no keyword search,
+    # no collision between indicators that share a keyword (e.g. both "utility" ones).
     d_indices: list[int] = []
-    for i, title in enumerate(new_titles):
-        found_idx = title_indices[i] if i < len(title_indices) else None
-        if found_idx is not None:
-            xml_str = _replace_si_text(xml_str, found_idx, title)
-            d_indices.append(found_idx)
-        else:
-            xml_str, new_idx = _append_si(xml_str, title)
-            d_indices.append(new_idx)
+    for title in new_titles:
+        xml_str, new_idx = _append_si(xml_str, title)
+        d_indices.append(new_idx)
 
     if wipo_idx_found is not None:
         xml_str = _replace_si_text(xml_str, wipo_idx_found, wipo_src)
@@ -240,7 +220,6 @@ def _update_shared_strings(
     else:
         xml_str, wto_idx = _append_si(xml_str, wto_src)
 
-    # Update count/uniqueCount attributes
     n_si = xml_str.count("<si>")
     xml_str = re.sub(r'count="\d+"', f'count="{n_si}"', xml_str)
     xml_str = re.sub(r'uniqueCount="\d+"', f'uniqueCount="{n_si}"', xml_str)
