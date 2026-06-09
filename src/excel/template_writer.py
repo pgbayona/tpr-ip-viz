@@ -95,6 +95,8 @@ def _populate_template_zip(tp: Path, profile: "CountryProfile") -> io.BytesIO:
     # Per-indicator titles using actual year ranges
     new_titles = [
         f"{profile.country_name} {label}: {sheet_year_range[hint]}"
+        if sheet_year_range[hint] != "no data"
+        else "No data"
         for (_, label, _), (_, hint, _) in zip(_SUMMARY_ROW_MAP, SHEET_CONFIG)
     ]
     wipo_src = _WIPO_SOURCE.format(date=pulled)
