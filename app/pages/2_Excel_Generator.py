@@ -97,6 +97,7 @@ _wto_src  = f"WTO Stats Portal. Viewed at: https://stats.wto.org/ ({_pulled})."
 with st.spinner("Computing data coverage…"):
     _preview_profile = _load(country_name, START, END)
 
+_DISPLAY_FROM = 2010
 _sheet_year_range: dict[str, str] = {}
 for attr, hint, _ in SHEET_CONFIG:
     _df = getattr(_preview_profile, attr, _pd.DataFrame())
@@ -107,6 +108,7 @@ for attr, hint, _ in SHEET_CONFIG:
     if not _val_cols:
         _sheet_year_range[hint] = "N/A"
         continue
+    _df = _df[_df["year"] >= _DISPLAY_FROM]
     _df = _df[_df[_val_cols].notna().any(axis=1)]
     _df = _df.sort_values("year").tail(7)
     if _df.empty:
@@ -119,7 +121,7 @@ for i, ((_, label, src_type), (_, hint, _)) in enumerate(
     zip(_SUMMARY_ROW_MAP, SHEET_CONFIG), start=1
 ):
     yr        = _sheet_year_range.get(hint, "N/A")
-    title_cell  = f"{country_name} {label}: {yr}" if yr != "N/A" else f"{country_name} {label}: no data"
+    title_cell  = f"{country_name} {label}: {yr}" if yr != "N/A" else f"No data ({_DISPLAY_FROM}–{END})"
     source_cell = _wipo_src if src_type == "WIPO" else _wto_src
     badge_color = "#004C97" if src_type == "WIPO" else "#007B8A"
     row_bg      = "#F4F8FC" if i % 2 == 0 else "#FFFFFF"

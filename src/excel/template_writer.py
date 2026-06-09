@@ -52,6 +52,7 @@ _WIPO_SOURCE = "WIPO IP Statistics Data Center. Viewed at: https://www3.wipo.int
 _WTO_SOURCE  = "WTO Stats Portal. Viewed at: https://stats.wto.org/ ({date})."
 
 _YEARS_TO_WRITE = 7
+_DISPLAY_FROM   = 2010  # Only show data from this year onwards
 
 # Map data sheet name → Summary label (for chart titles)
 _SHEET_TO_LABEL: dict[str, str] = {
@@ -93,10 +94,11 @@ def _populate_template_zip(tp: Path, profile: "CountryProfile") -> io.BytesIO:
             sheet_year_range[hint] = "no data"
 
     # Per-indicator titles using actual year ranges
+    no_data_label = f"No data ({_DISPLAY_FROM}–{profile.end_year})"
     new_titles = [
         f"{profile.country_name} {label}: {sheet_year_range[hint]}"
         if sheet_year_range[hint] != "no data"
-        else "No data"
+        else no_data_label
         for (_, label, _), (_, hint, _) in zip(_SUMMARY_ROW_MAP, SHEET_CONFIG)
     ]
     wipo_src = _WIPO_SOURCE.format(date=pulled)
@@ -430,7 +432,7 @@ def _latest_years(df: pd.DataFrame, n: int) -> pd.DataFrame:
     value_cols = [c for c in df.columns if c != "year"]
     if not value_cols:
         return pd.DataFrame()
-    df = df.sort_values("year")
+    df = df[df["year"] >= _DISPLAY_FROM].sort_values("year")
     df = df[df[value_cols].notna().any(axis=1)]
     return df.tail(n).reset_index(drop=True)
 
