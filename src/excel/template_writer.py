@@ -426,11 +426,12 @@ def _header_label(col_name: str) -> str:
 
 def _latest_years(df: pd.DataFrame, n: int) -> pd.DataFrame:
     if df.empty or "year" not in df.columns:
-        return df
-    df = df.sort_values("year")
+        return pd.DataFrame()
     value_cols = [c for c in df.columns if c != "year"]
-    if value_cols:
-        df = df[df[value_cols].notna().any(axis=1)]
+    if not value_cols:
+        return pd.DataFrame()
+    df = df.sort_values("year")
+    df = df[df[value_cols].notna().any(axis=1)]
     return df.tail(n).reset_index(drop=True)
 
 

@@ -104,8 +104,10 @@ for attr, hint, _ in SHEET_CONFIG:
         _sheet_year_range[hint] = "N/A"
         continue
     _val_cols = [c for c in _df.columns if c != "year"]
-    if _val_cols:
-        _df = _df[_df[_val_cols].notna().any(axis=1)]
+    if not _val_cols:
+        _sheet_year_range[hint] = "N/A"
+        continue
+    _df = _df[_df[_val_cols].notna().any(axis=1)]
     _df = _df.sort_values("year").tail(7)
     if _df.empty:
         _sheet_year_range[hint] = "N/A"
