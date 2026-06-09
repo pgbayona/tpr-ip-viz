@@ -88,10 +88,9 @@ def _populate_template_zip(tp: Path, profile: "CountryProfile") -> io.BytesIO:
         df = _latest_years(data_map.get(attr, pd.DataFrame()), _YEARS_TO_WRITE)
         sheet_data[hint] = (df, columns)
         if not df.empty and "year" in df.columns:
-            sheet_year_range[hint] = f"{int(df['year'].min())}-{int(df['year'].max())}"
+            sheet_year_range[hint] = f"{int(df['year'].min())}–{int(df['year'].max())}"
         else:
-            display_start = profile.end_year - (_YEARS_TO_WRITE - 1)
-            sheet_year_range[hint] = f"{display_start}-{profile.end_year}"
+            sheet_year_range[hint] = "no data"
 
     # Per-indicator titles using actual year ranges
     new_titles = [
